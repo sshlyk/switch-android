@@ -5,23 +5,47 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 
 public class DevicesDatabaseHelper extends SQLiteOpenHelper {
-    public static final String TABLE_NAME = "devices";
-    public static final String COLUMN_ID = "_id";
-    public static final String COLUMN_DEVICE_NAME = "name";
-    public DevicesDatabaseHelper(Context context) {
-        super(context, TABLE_NAME, null, 1);
-    }
+  public static final String TABLE_DEVICES = "devices";
+  public static final int VERSION = 8;
 
-    @Override
-    public void onCreate(SQLiteDatabase db) {
-        db.execSQL(String.format(
-                "create table %s (_id integer primary key autoincrement, name text);",
-                TABLE_NAME
-        ));
-    }
+  public DevicesDatabaseHelper(Context context) {
+    super(context, TABLE_DEVICES, null, VERSION);
+  }
 
-    @Override
-    public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-        db.execSQL(String.format("drop table %s;", TABLE_NAME));
+  @Override
+  public void onCreate(SQLiteDatabase db) {
+    final String createTableSql = String.format(
+        "CREATE TABLE %s (" +
+            "_id integer primary key autoincrement, " +
+            "uuid text," +
+            "name text," +
+            "status text," +
+            "deleted integer," +
+            "last_ip" +
+            ");",
+        TABLE_DEVICES
+    );
+
+    final String createIndex = String.format(
+        "CREATE INDEX device_uuid_idx ON %s (uuid);",
+        TABLE_DEVICES
+    );
+
+    db.beginTransaction();
+    try {
+      db.execSQL(createTableSql);
+      db.execSQL(createIndex);
+      db.setTransactionSuccessful();
+    } finally {
+      db.endTransaction();
     }
+  }
+
+  @Override
+  public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
+    db.beginTransaction();
+    db.execSQL(String.format("DROP TABLE IF EXISTS %s;", TABLE_DEVICES));
+    onCreate(db);
+    db.endTransaction();
+  }
 }

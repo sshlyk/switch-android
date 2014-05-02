@@ -18,10 +18,14 @@
         </activity>
 
         <provider
-            android:name=".contentproviders.DevicesContentProvider"
+            android:name=".content_providers.DevicesContentProvider"
             android:authorities="com.alisa.lswitch.devicesprovider"
             android:exported="false">
         </provider>
+
+        <service
+            android:name=".services.DevicesService"
+            android:exported="false"/>
     </application>
 
 </manifest>
