@@ -20,4 +20,5 @@ android {
 
 dependencies {
     compile fileTree(dir: 'libs', include: ['*.jar'])
+    compile files('libs/switch-server-1.0-client.jar')
 }

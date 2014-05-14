@@ -6,18 +6,23 @@ import android.content.CursorLoader;
 import android.content.Loader;
 import android.database.Cursor;
 import android.os.Bundle;
+import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
+import android.widget.LinearLayout;
+import android.widget.PopupWindow;
 import android.widget.SimpleCursorAdapter;
+import android.widget.TextView;
 
 import com.alisa.lswitch.content_providers.DevicesContentProvider;
-import com.alisa.lswitch.db.DevicesDatabaseHelper;
 import com.alisa.lswitch.services.DevicesService;
 
 
 public class SwitchListActivity extends ListActivity implements LoaderManager.LoaderCallbacks<Cursor> {
 
   private SimpleCursorAdapter cursorAdapter;
+  private PopupWindow popupWindow;
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
@@ -26,16 +31,36 @@ public class SwitchListActivity extends ListActivity implements LoaderManager.Lo
     initCursorAdapter();
   }
 
+  @Override
+  protected void onResume() {
+    super.onResume();
+    DevicesService.refreshListOfDevices(getApplicationContext());
+  }
+
   private void initCursorAdapter() {
     String[] from = new String[] {
-        DevicesContentProvider.ATTR_UUID,
+        DevicesContentProvider.ATTR_DEVICE_ID,
         DevicesContentProvider.ATTR_STATUS
     };
     int[] to = new int[] {
         R.id.device_name,
         R.id.device_status
     };
-    cursorAdapter = new SimpleCursorAdapter(this, R.layout.device, null, from, to, 0);
+    cursorAdapter = new SimpleCursorAdapter(this, R.layout.device, null, from, to, 0) {
+      @Override
+      public void setViewText(TextView v, String text) {
+        super.setViewText(v, convert(v.getId(), text));
+      }
+
+      private String convert(int id, String text) {
+        switch (id) {
+        case (R.id.device_status):
+          return "0".equals(text) ? "OFF" : "ON";
+        default:
+          return text;
+        }
+      }
+    };
     setListAdapter(cursorAdapter);
     getLoaderManager().initLoader(0, null, this);
   }
@@ -61,6 +86,28 @@ public class SwitchListActivity extends ListActivity implements LoaderManager.Lo
     default:
       return super.onOptionsItemSelected(item);
     }
+  }
+
+  public void deviceInfo(View view) {
+    View popupView = getLayoutInflater().inflate(R.layout.device_info_popup, null);
+    if (popupWindow != null) { popupWindow.dismiss(); }
+    popupWindow = new PopupWindow(
+        popupView,
+        LinearLayout.LayoutParams.WRAP_CONTENT,
+        LinearLayout.LayoutParams.WRAP_CONTENT,
+        false //focusable
+    );
+    popupWindow.setAnimationStyle(android.R.style.Animation_Dialog);
+    popupWindow.showAtLocation(popupView, Gravity.CENTER, 0,0);
+    popupView.setOnClickListener(new View.OnClickListener() {
+      @Override
+      public void onClick(View v) { popupWindow.dismiss(); }
+    });
+  }
+
+  public void operateSimpleSwitch(View view) {
+    final String deviceId = ((TextView) view.findViewById(R.id.device_name)).getText().toString();
+    DevicesService.toggleSimpleSwitch(deviceId, getApplicationContext());
   }
 
   /* ****************************************************************************************** */
