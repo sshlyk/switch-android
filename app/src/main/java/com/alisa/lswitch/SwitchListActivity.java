@@ -6,65 +6,57 @@ import android.content.CursorLoader;
 import android.content.Loader;
 import android.database.Cursor;
 import android.os.Bundle;
-import android.view.Gravity;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.LinearLayout;
 import android.widget.PopupWindow;
 import android.widget.SimpleCursorAdapter;
 import android.widget.TextView;
 
 import com.alisa.lswitch.content_providers.DevicesContentProvider;
+import com.alisa.lswitch.services.DeviceListService;
 import com.alisa.lswitch.services.DevicesService;
+
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 
 
 public class SwitchListActivity extends ListActivity implements LoaderManager.LoaderCallbacks<Cursor> {
 
   private SimpleCursorAdapter cursorAdapter;
   private PopupWindow popupWindow;
+  private static final long DEVICE_LIST_UPDATE_INTERVAL_SEC = 10;
+  private static final String TAG = SwitchListActivity.class.getSimpleName();
+
+  private static final String BUNDLE_LIST_TIMESTAMP = "list_timestamp";
+  private DeviceListRefresher mDeviceListRefresher;
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.device_list);
-    initCursorAdapter();
+
+    cursorAdapter = new DeviceCursorAdapter(this);
+    setListAdapter(cursorAdapter);
+    getLoaderManager().initLoader(0, null, this);
+
+    mDeviceListRefresher = new DeviceListRefresher(
+        DEVICE_LIST_UPDATE_INTERVAL_SEC, getApplicationContext());
+
   }
 
   @Override
-  protected void onResume() {
-    super.onResume();
-    DevicesService.refreshListOfDevices(getApplicationContext());
+  protected void onStart() {
+    super.onStart();
+    mDeviceListRefresher.start();
   }
 
-  private void initCursorAdapter() {
-    String[] from = new String[] {
-        DevicesContentProvider.ATTR_DEVICE_ID,
-        DevicesContentProvider.ATTR_STATUS
-    };
-    int[] to = new int[] {
-        R.id.device_name,
-        R.id.device_status
-    };
-    cursorAdapter = new SimpleCursorAdapter(this, R.layout.device, null, from, to, 0) {
-      @Override
-      public void setViewText(TextView v, String text) {
-        super.setViewText(v, convert(v.getId(), text));
-      }
-
-      private String convert(int id, String text) {
-        switch (id) {
-        case (R.id.device_status):
-          return "0".equals(text) ? "OFF" : "ON";
-        default:
-          return text;
-        }
-      }
-    };
-    setListAdapter(cursorAdapter);
-    getLoaderManager().initLoader(0, null, this);
+  @Override
+  protected void onStop() {
+    super.onStop();
+    mDeviceListRefresher.stop();
   }
-
 
   @Override
   public boolean onCreateOptionsMenu(Menu menu) {
@@ -81,31 +73,32 @@ public class SwitchListActivity extends ListActivity implements LoaderManager.Lo
     int id = item.getItemId();
     switch (id) {
     case R.id.action_refresh:
-      DevicesService.refreshListOfDevices(getApplicationContext());
+      DeviceListService.refreshListOfDevices(getApplicationContext());
       return true;
     default:
       return super.onOptionsItemSelected(item);
     }
   }
 
-  public void deviceInfo(View view) {
-    View popupView = getLayoutInflater().inflate(R.layout.device_info_popup, null);
-    if (popupWindow != null) { popupWindow.dismiss(); }
-    popupWindow = new PopupWindow(
-        popupView,
-        LinearLayout.LayoutParams.WRAP_CONTENT,
-        LinearLayout.LayoutParams.WRAP_CONTENT,
-        false //focusable
-    );
-    popupWindow.setAnimationStyle(android.R.style.Animation_Dialog);
-    popupWindow.showAtLocation(popupView, Gravity.CENTER, 0,0);
-    popupView.setOnClickListener(new View.OnClickListener() {
-      @Override
-      public void onClick(View v) { popupWindow.dismiss(); }
-    });
-  }
+  //TODO device info popup
+//  public void deviceInfo(View view) {
+//    View popupView = getLayoutInflater().inflate(R.layout.device_info_popup, null);
+//    if (popupWindow != null) { popupWindow.dismiss(); }
+//    popupWindow = new PopupWindow(
+//        popupView,
+//        LinearLayout.LayoutParams.WRAP_CONTENT,
+//        LinearLayout.LayoutParams.WRAP_CONTENT,
+//        false //focusable
+//    );
+//    popupWindow.setAnimationStyle(android.R.style.Animation_Dialog);
+//    popupWindow.showAtLocation(popupView, Gravity.CENTER, 0,0);
+//    popupView.setOnClickListener(new View.OnClickListener() {
+//      @Override
+//      public void onClick(View v) { popupWindow.dismiss(); }
+//    });
+//  }
 
-  public void operateSimpleSwitch(View view) {
+  public void toggleSimpleSwitch(View view) {
     final String deviceId = ((TextView) view.findViewById(R.id.device_name)).getText().toString();
     DevicesService.toggleSimpleSwitch(deviceId, getApplicationContext());
   }

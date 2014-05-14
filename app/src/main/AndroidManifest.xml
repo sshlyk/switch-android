@@ -29,6 +29,9 @@
         <service
             android:name=".services.DevicesService"
             android:exported="false"/>
+        <service
+            android:name=".services.DeviceListService"
+            android:exported="false"/>
     </application>
 
 </manifest>

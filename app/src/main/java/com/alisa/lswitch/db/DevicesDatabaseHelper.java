@@ -7,7 +7,7 @@ import android.util.Log;
 
 public class DevicesDatabaseHelper extends SQLiteOpenHelper {
   public static final String TABLE_DEVICES = "devices";
-  public static final int VERSION = 16;
+  public static final int VERSION = 18;
 
   public DevicesDatabaseHelper(Context context) {
     super(context, TABLE_DEVICES, null, VERSION);
@@ -21,8 +21,8 @@ public class DevicesDatabaseHelper extends SQLiteOpenHelper {
             "device_id TEXT," +
             "name TEXT," +
             "type TEXT," +
-            "status TEXT," +
-            "deleted INTEGER," +
+            "state TEXT," +
+            "deleted INTEGER DEFAULT 0," +
             "last_ip TEXT," +
             "last_updated INTEGER," +
             "UNIQUE (device_id) ON CONFLICT REPLACE" +

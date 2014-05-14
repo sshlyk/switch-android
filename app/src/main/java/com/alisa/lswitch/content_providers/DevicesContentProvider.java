@@ -25,7 +25,7 @@ public class DevicesContentProvider extends ContentProvider {
   public static final String ATTR_NAME = "name";
   public static final String ATTR_DEVICE_ID = "device_id";
   public static final String ATTR_DELETED = "deleted";
-  public static final String ATTR_STATUS = "status";
+  public static final String ATTR_STATE = "state";
   public static final String ATTR_IP = "last_ip";
   public static final String ATTR_LAST_UPDATED = "last_updated";
 
@@ -91,6 +91,7 @@ public class DevicesContentProvider extends ContentProvider {
       SQLiteDatabase db = dbHelper.getWritableDatabase();
       if (values.containsKey(ATTR_DEVICE_ID)) {
         values.put(ATTR_LAST_UPDATED, System.currentTimeMillis()/1000);
+        values.put(ATTR_DELETED, 0);
         db.insert(DevicesDatabaseHelper.TABLE_DEVICES, null, values);
       }
     }
@@ -121,11 +122,13 @@ public class DevicesContentProvider extends ContentProvider {
         Log.d(TAG, "Device has been marked as deleted: " + deviceId);
       }
     }
+    getContext().getContentResolver().notifyChange(uri, null);
     return recordsRemoved;
   }
 
   @Override
   public int update(Uri uri, ContentValues values, String selection, String[] selectionArgs) {
+    getContext().getContentResolver().notifyChange(uri, null);
     return 0;
   }
 }
