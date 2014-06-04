@@ -7,7 +7,7 @@ import android.util.Log;
 
 public class DevicesDatabaseHelper extends SQLiteOpenHelper {
   public static final String TABLE_DEVICES = "devices";
-  public static final int VERSION = 18;
+  public static final int VERSION = 20;
 
   public DevicesDatabaseHelper(Context context) {
     super(context, TABLE_DEVICES, null, VERSION);
@@ -21,7 +21,11 @@ public class DevicesDatabaseHelper extends SQLiteOpenHelper {
             "device_id TEXT," +
             "name TEXT," +
             "type TEXT," +
-            "state TEXT," +
+            "state INTEGER," +
+            /* indicates whether there is pending request
+               -1 - no pending request, otherwise request issued timestamp
+             */
+            "operation_timestamp INTEGER DEFAULT 0," +
             "deleted INTEGER DEFAULT 0," +
             "last_ip TEXT," +
             "last_updated INTEGER," +

@@ -5,4 +5,14 @@
         android:state_focused="false"
         android:state_pressed="true"
         android:drawable="@drawable/device_onclick_background" />
+
+    <!-- Device is ready -->
+    <item
+        android:state_enabled="true"
+        android:drawable="@color/White" />
+
+    <!-- Request to operate device is currently in-flight -->
+    <item
+        android:state_enabled="false"
+        android:drawable="@color/LightGrey"/>
 </selector>

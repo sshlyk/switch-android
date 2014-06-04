@@ -15,7 +15,7 @@ public class DeviceListRefresher {
   private final long intervalSec;
   private final Context context;
   private final ScheduledExecutorService scheduler;
-  ScheduledFuture<?> task;
+  private ScheduledFuture<?> task;
   private static final String TAG = DeviceListRefresher.class.getSimpleName();
 
 

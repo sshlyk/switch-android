@@ -1,6 +1,7 @@
 package com.alisa.lswitch.services;
 
 import android.app.IntentService;
+import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
@@ -10,7 +11,8 @@ import android.util.Log;
 
 import com.alisa.lswitch.client.Auth;
 import com.alisa.lswitch.client.SwitchProxy;
-import com.alisa.lswitch.client.model.BaseModel;
+import com.alisa.lswitch.client.model.BaseRequest;
+import com.alisa.lswitch.client.model.BaseRequest;
 import com.alisa.lswitch.client.model.StatusReply;
 import com.alisa.lswitch.content_providers.DevicesContentProvider;
 import com.alisa.lswitch.utils.Utils;
@@ -22,12 +24,21 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.UUID;
 
 public class DeviceListService extends IntentService {
 
   private SwitchProxy proxy;
   private static String TAG = "DeviceListService";
+  private final int statusRequestBurstSize = 100; //TODO move to config
+  private final LinkedHashMap<UUID, Long> statusResponseLookup = new LinkedHashMap<UUID, Long>() {
+    @Override
+    protected boolean removeEldestEntry(Map.Entry<UUID, Long> eldest) {
+      return size() > 500;
+    }
+  };
 
   public DeviceListService() {
     super(TAG);
@@ -53,7 +64,7 @@ public class DeviceListService extends IntentService {
     removeStaleDevices();
 
     //TODO remove
-    insertDummyRecord();
+    //insertDummyRecord();
   }
 
   private void refresh() {
@@ -75,12 +86,14 @@ public class DeviceListService extends IntentService {
         @Override
         public void send(byte[] bytes) throws IOException {
           //TODO send burst
-          finalSocket.send(new DatagramPacket(
-              bytes,
-              bytes.length,
-              broadcastAddress,
-              port
-          ));
+          for (int i = 0; i < statusRequestBurstSize; i++) {
+            finalSocket.send(new DatagramPacket(
+                bytes,
+                bytes.length,
+                broadcastAddress,
+                port
+            ));
+          }
         }
       });
       //wait for replies
@@ -90,7 +103,7 @@ public class DeviceListService extends IntentService {
       socket.setSoTimeout(2000); //TODO move to config
       socket.receive(deviceReply);
       //update devices list
-      updateDevicesList(deviceReply);
+      updateDevicesList(deviceReply, getContentResolver());
     } catch (SocketTimeoutException e) {
       //refresh complete
       Log.d(TAG, "Refresh complete. Timeout.");
@@ -101,11 +114,11 @@ public class DeviceListService extends IntentService {
     }
   }
 
-  private void updateDevicesList(DatagramPacket deviceReply) {
+  private void updateDevicesList(DatagramPacket deviceReply, ContentResolver contentResolver) {
     if (deviceReply == null) { return; }
     try {
       final StatusReply status = new StatusReply(ByteBuffer.wrap(deviceReply.getData()));
-
+      if (statusResponseLookup.containsValue(status.getRequestId())) { return; }
       ContentValues values = new ContentValues();
       values.put(DevicesContentProvider.ATTR_NAME, "Generic device"); //TODO
       values.put(DevicesContentProvider.ATTR_STATE, status.getState() + ""); //TODO change underlying table so it stores int
@@ -115,15 +128,16 @@ public class DeviceListService extends IntentService {
       }
       //TODO store port number
 
-      this.getContentResolver().insert(DevicesContentProvider.DEVICES_CONTENT_URI, values);
-    } catch (BaseModel.SerializationException e) {
+      contentResolver.insert(DevicesContentProvider.DEVICES_CONTENT_URI, values);
+      statusResponseLookup.put(status.getRequestId(), System.currentTimeMillis());
+    } catch (BaseRequest.SerializationException e) {
       Log.d(TAG, "Could not parse reply from a device. Ignoring. IP: " + deviceReply.getAddress());
     }
   }
 
   private void removeStaleDevices() {
     //TODO move to config
-    final long stalenessThresholdSec = System.currentTimeMillis()/1000 - 10 * 60;
+    final long stalenessThresholdSec = System.currentTimeMillis()/1000 - 60; //TODO
     Cursor cursor = this.getContentResolver().query(
         DevicesContentProvider.DEVICES_CONTENT_URI,
         null, //projection
@@ -157,6 +171,6 @@ public class DeviceListService extends IntentService {
     final byte[] record = new StatusReply() {{
       setDeviceId(UUID.randomUUID());
     }}.serialize();
-    updateDevicesList(new DatagramPacket(record, record.length));
+    updateDevicesList(new DatagramPacket(record, record.length), getContentResolver());
   }
 }

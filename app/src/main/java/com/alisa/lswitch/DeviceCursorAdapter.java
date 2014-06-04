@@ -31,6 +31,19 @@ public class DeviceCursorAdapter extends SimpleCursorAdapter {
       statusBackground = R.color.Yellow;
     }
     view.findViewById(R.id.device_status).setBackgroundResource(statusBackground);
+
+    final int lastOperationTimestampCol = cursor.getColumnIndex(
+        DevicesContentProvider.ATTR_OPERATION_TIMESTAMP
+    );
+    final int lastOperationTimestamp = cursor.getInt(lastOperationTimestampCol);
+
+    //TODO move to constants somewhere
+    final long maxOperationInervalSec = 5;
+    if (lastOperationTimestamp > 0
+        && System.currentTimeMillis() - lastOperationTimestamp < maxOperationInervalSec) {
+      view.setEnabled(false);
+    }
+
   }
 
   @Override

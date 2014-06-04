@@ -5,6 +5,7 @@ import android.app.LoaderManager;
 import android.content.CursorLoader;
 import android.content.Loader;
 import android.database.Cursor;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
@@ -17,6 +18,7 @@ import android.widget.TextView;
 import com.alisa.lswitch.content_providers.DevicesContentProvider;
 import com.alisa.lswitch.services.DeviceListService;
 import com.alisa.lswitch.services.DevicesService;
+import com.alisa.lswitch.services.OperateDeviceAsyncTask;
 
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -100,7 +102,12 @@ public class SwitchListActivity extends ListActivity implements LoaderManager.Lo
 
   public void toggleSimpleSwitch(View view) {
     final String deviceId = ((TextView) view.findViewById(R.id.device_name)).getText().toString();
-    DevicesService.toggleSimpleSwitch(deviceId, getApplicationContext());
+    //DevicesService.toggleSimpleSwitch(deviceId, getApplicationContext());
+    final OperateDeviceAsyncTask.Request request = new OperateDeviceAsyncTask.Request();
+    request.setDeviceId(deviceId);
+    new OperateDeviceAsyncTask(
+        getApplicationContext()
+    ).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, request);
   }
 
   /* ****************************************************************************************** */

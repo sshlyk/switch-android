@@ -6,11 +6,11 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteQueryBuilder;
 import android.net.Uri;
+import android.text.TextUtils;
 import android.util.Log;
 
 import com.alisa.lswitch.db.DevicesDatabaseHelper;
 
-import java.util.Arrays;
 import java.util.List;
 
 public class DevicesContentProvider extends ContentProvider {
@@ -26,6 +26,7 @@ public class DevicesContentProvider extends ContentProvider {
   public static final String ATTR_DEVICE_ID = "device_id";
   public static final String ATTR_DELETED = "deleted";
   public static final String ATTR_STATE = "state";
+  public static final String ATTR_OPERATION_TIMESTAMP = "operation_timestamp";
   public static final String ATTR_IP = "last_ip";
   public static final String ATTR_LAST_UPDATED = "last_updated";
 
@@ -57,9 +58,9 @@ public class DevicesContentProvider extends ContentProvider {
       query.setTables(DevicesDatabaseHelper.TABLE_DEVICES);
       if (selection != null ) { query.appendWhere(selection); }
       query.appendWhere(String.format("%s = 0", ATTR_DELETED));
-      if (segments.size() > 2) {
+      if (segments.size() > 1) {
         final String deviceId = segments.get(1);
-        query.appendWhereEscapeString(String.format("%s = %s", ATTR_DEVICE_ID, deviceId));
+        query.appendWhere(String.format(" AND %s = '%s'", ATTR_DEVICE_ID, deviceId));
       }
       final Cursor cursor = query.query(
           dbHelper.getReadableDatabase(),
@@ -128,7 +129,30 @@ public class DevicesContentProvider extends ContentProvider {
 
   @Override
   public int update(Uri uri, ContentValues values, String selection, String[] selectionArgs) {
+    List<String> segments = uri.getPathSegments();
+    if (segments.size() < 1) return 0;
+    final String path = segments.get(0);
+
+    int rowsUpdated = 0;
+    if (DEVICES_PATH.equals(path)) {
+      if (segments.size() > 1) {
+        final String deviceId = segments.get(1);
+        if (!TextUtils.isEmpty(selection)) {
+          selection += " AND ";
+        } else {
+          selection = "";
+        }
+        selection += String.format("%s = '%s'", ATTR_DEVICE_ID, deviceId);
+      }
+      rowsUpdated = dbHelper.getWritableDatabase().update(
+          DevicesDatabaseHelper.TABLE_DEVICES,
+          values,
+          selection,
+          selectionArgs
+      );
+    }
+
     getContext().getContentResolver().notifyChange(uri, null);
-    return 0;
+    return rowsUpdated;
   }
 }

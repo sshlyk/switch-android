@@ -10,7 +10,7 @@ import android.util.Log;
 
 import com.alisa.lswitch.client.Auth;
 import com.alisa.lswitch.client.SwitchProxy;
-import com.alisa.lswitch.client.model.BaseModel;
+import com.alisa.lswitch.client.model.BaseRequest;
 import com.alisa.lswitch.client.model.StatusReply;
 import com.alisa.lswitch.client.model.SwitchRequest;
 import com.alisa.lswitch.content_providers.DevicesContentProvider;
