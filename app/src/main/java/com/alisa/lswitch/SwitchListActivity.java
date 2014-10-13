@@ -50,7 +50,7 @@ public class SwitchListActivity extends ListActivity implements LoaderManager.Lo
   }
 
   @Override
-  protected void onPause() {
+  protected void onStop() {
     super.onStop();
     mDeviceListRefresher.stop();
   }

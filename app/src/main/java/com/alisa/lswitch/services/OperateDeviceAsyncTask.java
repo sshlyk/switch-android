@@ -11,7 +11,6 @@ import com.alisa.lswitch.content_providers.DevicesContentProvider;
 import com.alisa.lswitch.utils.Utils;
 
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
@@ -141,6 +140,7 @@ public class OperateDeviceAsyncTask extends AsyncTask<OperateDeviceAsyncTask.Req
       }
 
       final SwitchRequest switchRequest = new SwitchRequest();
+      switchRequest.setDeviceId(deviceUUID);
       switchRequest.setOperation(operation);
       switchRequest.sign(passCode.getBytes("UTF-8"));
       final byte[] bytesToSend = switchRequest.serialize();

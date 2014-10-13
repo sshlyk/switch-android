@@ -60,25 +60,7 @@ public class DeviceCursorAdapter extends SimpleCursorAdapter {
 
     final FrameLayout imgHolder = (FrameLayout) view.findViewById(R.id.device_status_img_holder);
     imgHolder.removeAllViews();
-
-    if (operationInProgress) {
-      final ImageView statusImage = new ImageView(context);
-      statusImage.setBackgroundResource(R.drawable.gears_spinning);
-      imgHolder.addView(statusImage);
-
-      //TODO animation
-      final AnimationDrawable frameAnimation = (AnimationDrawable) statusImage.getBackground();
-      if (!frameAnimation.isRunning()) {
-        frameAnimation.setVisible(true, true);
-        frameAnimation.start();
-        view.postDelayed(new Runnable() {
-          @Override
-          public void run() {
-            frameAnimation.stop();
-          }
-        }, 2000); //TODO
-      }
-    }
+    //TODO set some icon
   }
 
   @Override
