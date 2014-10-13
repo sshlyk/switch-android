@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+    <EditTextPreference
+        android:key="@string/passCodeKey"
+        android:title="Set password"
+        android:summary="Garage pass code"
+        android:dialogTitle="Password used to authorize garage requests"
+        android:password="true"
+        android:maxLength="30"
+        android:imeOptions="actionDone"
+        android:selectAllOnFocus="true"
+        />
+    <EditTextPreference
+        android:key="@string/portNumberKey"
+        android:title="Set port number"
+        android:summary="Garage port number"
+        android:dialogTitle="Garage's listening port number"
+        android:maxLength="5"
+        android:imeOptions="actionDone"
+        android:selectAllOnFocus="true"
+        android:inputType="number"
+        android:defaultValue="@string/defaultPortNumber"
+        />
+</PreferenceScreen>

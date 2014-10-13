@@ -6,17 +6,15 @@ import android.database.Cursor;
 import android.os.AsyncTask;
 import android.util.Log;
 
-import com.alisa.lswitch.client.Auth;
-import com.alisa.lswitch.client.SwitchProxy;
 import com.alisa.lswitch.client.model.SwitchRequest;
 import com.alisa.lswitch.content_providers.DevicesContentProvider;
 import com.alisa.lswitch.utils.Utils;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
-import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
 public class OperateDeviceAsyncTask extends AsyncTask<OperateDeviceAsyncTask.Request, Void, Void> {
@@ -24,10 +22,13 @@ public class OperateDeviceAsyncTask extends AsyncTask<OperateDeviceAsyncTask.Req
   private Context context;
   private final String TAG = OperateDeviceAsyncTask.class.getSimpleName();
   private final int requestBurstSize = 20;
-  private final SwitchProxy proxy = new SwitchProxy(new Auth("".getBytes(StandardCharsets.UTF_8)));
+  private int serverPort;
+  private String passCode;
 
-  public OperateDeviceAsyncTask(final Context context) {
+  public OperateDeviceAsyncTask(final String passCode, final int serverPort, final Context context) {
     this.context = context;
+    this.passCode = passCode;
+    this.serverPort = serverPort;
   }
 
   @Override
@@ -41,23 +42,22 @@ public class OperateDeviceAsyncTask extends AsyncTask<OperateDeviceAsyncTask.Req
     final Request request = params[0];
     final String deviceId = request.getDeviceId();
     setDeviceState(deviceId, true);
-
     try {
-
-      toggleSimpleSwitch(deviceId, context);
-
-      //TODO
-      DeviceListService.refreshListOfDevices(context);
-
+      switch (request.getOperation()) {
+          case TOGGLE:
+            toggleSimpleSwitch(deviceId, context);
+            break;
+          case BLINK:
+            blinkSimpleSwitch(deviceId, context);
+            break;
+          default:
+            return null;
+      }
+      DeviceListService.refreshListOfDevices(context, passCode);
     } finally {
       setDeviceState(deviceId, false);
     }
     return null;
-  }
-
-  @Override
-  protected void onPostExecute(Void aVoid) {
-    super.onPostExecute(aVoid);
   }
 
   private void setDeviceState(String deviceId, boolean inProgress) {
@@ -77,16 +77,25 @@ public class OperateDeviceAsyncTask extends AsyncTask<OperateDeviceAsyncTask.Req
   public static class Request {
 
     private String deviceId;
+    private Operation operation;
+    public enum Operation {
+      TOGGLE, BLINK
+    }
 
     public String getDeviceId() {
       return deviceId;
     }
-
     public void setDeviceId(String deviceId) {
       this.deviceId = deviceId;
     }
-  }
+    public Operation getOperation() {
+        return operation;
+    }
 
+    public void setOperation(Operation operation) {
+        this.operation = operation;
+    }
+  }
 
   private void toggleSimpleSwitch(String deviceId, final Context context) {
     Cursor cursor = context.getContentResolver().query(
@@ -99,44 +108,56 @@ public class OperateDeviceAsyncTask extends AsyncTask<OperateDeviceAsyncTask.Req
     if (cursor != null && cursor.moveToNext()) {
       final int state = cursor.getInt(cursor.getColumnIndex(DevicesContentProvider.ATTR_STATE));
       final int newState = (state == 0 ? 1 : 0);
-      operateSimpleSwitch(UUID.fromString(deviceId), newState, context);
+        final SwitchRequest.Operation operation = newState == 0 ?
+                SwitchRequest.Operation.SET_OFF : SwitchRequest.Operation.SET_ON;
+      operateSimpleSwitch(deviceId, operation, context);
     } else {
       Log.w(TAG, "Could not toggle switch. Device not found: " + deviceId);
     }
-
     if (cursor != null) { cursor.close(); }
   }
 
+  private void blinkSimpleSwitch(String deviceId, final Context context) {
+    operateSimpleSwitch(deviceId, SwitchRequest.Operation.BLINK, context);
+  }
+
   /* Operate simple switch device */
-  private void operateSimpleSwitch(final UUID deviceId, final int operationVal, final Context context) {
-    DatagramSocket socketToClose = null;
-    final int port = 61235; //TODO move to config
+  private void operateSimpleSwitch(final String deviceId, final SwitchRequest.Operation operation, final Context context) {
+    final UUID deviceUUID;
     try {
-      final DatagramSocket socket = new DatagramSocket();
+      deviceUUID = UUID.fromString(deviceId);
+    } catch (IllegalArgumentException e) {
+      Log.d(TAG, "Invalid device id: " + deviceId);
+      return;
+    }
+    DatagramSocket socketToClose = null;
+    try {
+      final DatagramSocket socket = new DatagramSocket(0);
       socket.setBroadcast(true);
       final InetAddress broadcastAddress = Utils.getWiFiBroadcastIp(context);
       if (broadcastAddress == null) {
         Log.d(TAG, "Broadcast address is missing");
         return;
       }
-      final SwitchRequest.Operation operation = operationVal == 0 ?
-          SwitchRequest.Operation.SET_OFF : SwitchRequest.Operation.SET_ON;
-      proxy.changeSwitchStatus(deviceId, operation, new SwitchProxy.Wire() {
-        @Override
-        public void send(byte[] bytes) throws IOException {
-          for (int i = 0; i < requestBurstSize; i++) {
-            socket.send(new DatagramPacket(
-                bytes,
-                bytes.length,
-                broadcastAddress,
-                port
-            ));
-          }
-        }
-      });
-      Log.i(TAG, "New state request has been sent. DeviceId: " + deviceId
-          + ". New state: " + operationVal);
 
+      final SwitchRequest switchRequest = new SwitchRequest();
+      switchRequest.setOperation(operation);
+      switchRequest.sign(passCode.getBytes("UTF-8"));
+      final byte[] bytesToSend = switchRequest.serialize();
+
+      for (int i = 0; i < requestBurstSize; i++) {
+        socket.send(new DatagramPacket(
+                    bytesToSend,
+                    bytesToSend.length,
+                    broadcastAddress,
+                    serverPort
+        ));
+      }
+      Log.i(TAG, "New state request has been sent. DeviceId: " + deviceId
+          + ". New state: " + operation);
+
+      //TODO now listen for reply instead of triggering refresh
+      //socket.setBroadcast(false);
 
     } catch (IOException e) {
       Log.d(TAG, "Failed to operates simple switch due to IO exception", e);

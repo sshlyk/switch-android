@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<animation-list xmlns:android="http://schemas.android.com/apk/res/android"
+                android:id="@+id/gears_spinning"
+                android:oneshot="false">
+    <item android:drawable="@drawable/gears_frame6" android:duration="200" />
+    <item android:drawable="@drawable/gears_frame5" android:duration="200" />
+    <item android:drawable="@drawable/gears_frame4" android:duration="200" />
+    <item android:drawable="@drawable/gears_frame3" android:duration="200" />
+    <item android:drawable="@drawable/gears_frame2" android:duration="200" />
+    <item android:drawable="@drawable/gears_frame1" android:duration="200" />
+</animation-list>

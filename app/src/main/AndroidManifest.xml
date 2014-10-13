@@ -15,9 +15,12 @@
             android:label="@string/app_name" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+        </activity>
+        <activity
+            android:name="com.alisa.lswitch.SettingsActivity"
+            android:label="@string/action_settings">
         </activity>
 
         <provider
@@ -25,10 +28,6 @@
             android:authorities="com.alisa.lswitch.devicesprovider"
             android:exported="false">
         </provider>
-
-        <service
-            android:name=".services.DevicesService"
-            android:exported="false"/>
         <service
             android:name=".services.DeviceListService"
             android:exported="false"/>

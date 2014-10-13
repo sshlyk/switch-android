@@ -4,11 +4,19 @@
     android:orientation="vertical"
     android:layout_width="match_parent"
     android:layout_height="100dp"
-    android:onClick="toggleSimpleSwitch"
+    android:onClick="blinkSimpleSwitch"
     android:background="@drawable/device_onclick_selector">
 
     <TextView
         android:id="@+id/device_name"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:minHeight="30dp"
+        android:hint="device-type"
+        android:gravity="center_vertical"/>
+
+    <TextView
+        android:id="@+id/device_id"
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
         android:minHeight="30dp"
@@ -22,5 +30,10 @@
         android:hint="status"
         android:gravity="center"
         android:textAllCaps="true"/>
+
+    <FrameLayout
+        android:id="@+id/device_status_img_holder"
+        android:layout_width="100dp"
+        android:layout_height="100dp"></FrameLayout>
 
 </LinearLayout>

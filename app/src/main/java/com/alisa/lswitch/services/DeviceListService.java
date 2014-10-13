@@ -9,11 +9,10 @@ import android.database.Cursor;
 import android.net.Uri;
 import android.util.Log;
 
-import com.alisa.lswitch.client.Auth;
-import com.alisa.lswitch.client.SwitchProxy;
 import com.alisa.lswitch.client.model.BaseRequest;
 import com.alisa.lswitch.client.model.BaseRequest;
 import com.alisa.lswitch.client.model.StatusReply;
+import com.alisa.lswitch.client.model.StatusRequest;
 import com.alisa.lswitch.content_providers.DevicesContentProvider;
 import com.alisa.lswitch.utils.Utils;
 
@@ -30,7 +29,6 @@ import java.util.UUID;
 
 public class DeviceListService extends IntentService {
 
-  private SwitchProxy proxy;
   private static String TAG = "DeviceListService";
   private final int statusRequestBurstSize = 100; //TODO move to config
   private final LinkedHashMap<UUID, Long> statusResponseLookup = new LinkedHashMap<UUID, Long>() {
@@ -40,34 +38,30 @@ public class DeviceListService extends IntentService {
     }
   };
 
+  private final static String SECRET = "secret";
+
   public DeviceListService() {
     super(TAG);
   }
 
-  public static void refreshListOfDevices(Context ctx) {
+  public static void refreshListOfDevices(Context ctx, String passCode) {
     Intent intent = new Intent(ctx, DeviceListService.class);
+    intent.putExtra(SECRET, passCode);
     ctx.startService(intent);
   }
 
   @Override
   protected void onHandleIntent(Intent intent) {
-    if (proxy == null) {
-      try {
-        proxy = new SwitchProxy(new Auth("TODO".getBytes("UTF-8")));
-      } catch (UnsupportedEncodingException e) {
-        Log.w(TAG, "Failed to create switch proxy", e);
-        return;
-      }
-    }
-
-    refresh();
+    final String passCode = intent.getStringExtra(SECRET);
+    if (passCode == null) { return; }
+    refresh(passCode);
     removeStaleDevices();
 
-    //TODO remove
+    //TODO remove testing only
     //insertDummyRecord();
   }
 
-  private void refresh() {
+  private void refresh(String passCode) {
     //TODO broadcast devices status request, listen for response and update list of devices
     DatagramSocket socket = null;
     final int port = 51235; //TODO move to a config
@@ -82,28 +76,31 @@ public class DeviceListService extends IntentService {
       socket = new DatagramSocket();
       socket.setBroadcast(true);
       final DatagramSocket finalSocket = socket;
-      proxy.requestStatusBroadcast(new SwitchProxy.Wire() {
-        @Override
-        public void send(byte[] bytes) throws IOException {
-          //TODO send burst
-          for (int i = 0; i < statusRequestBurstSize; i++) {
-            finalSocket.send(new DatagramPacket(
-                bytes,
-                bytes.length,
-                broadcastAddress,
-                port
-            ));
-          }
-        }
-      });
+
+      final StatusRequest statusRequest = new StatusRequest();
+      statusRequest.sign(passCode.getBytes("UTF-8"));
+      final byte[] bytes = statusRequest.serialize();
+      for (int i = 0; i < statusRequestBurstSize; i++) {
+        finalSocket.send(new DatagramPacket(
+            bytes,
+            bytes.length,
+            broadcastAddress,
+            port
+        ));
+      }
+
       //wait for replies
       byte[] reply = new byte[1024];
       DatagramPacket deviceReply = new DatagramPacket(reply, reply.length);
-
-      socket.setSoTimeout(2000); //TODO move to config
-      socket.receive(deviceReply);
-      //update devices list
-      updateDevicesList(deviceReply, getContentResolver());
+      final int replyWaitInterval = 2000;
+      final long waitStart = System.currentTimeMillis();
+      long elapsed = 0;
+      do {
+        socket.setSoTimeout((int)(replyWaitInterval - elapsed));
+        socket.receive(deviceReply);
+        elapsed = System.currentTimeMillis() - waitStart;
+        updateDevicesList(deviceReply, getContentResolver());
+      } while (elapsed < replyWaitInterval);
     } catch (SocketTimeoutException e) {
       //refresh complete
       Log.d(TAG, "Refresh complete. Timeout.");
@@ -120,7 +117,7 @@ public class DeviceListService extends IntentService {
       final StatusReply status = new StatusReply(ByteBuffer.wrap(deviceReply.getData()));
       if (statusResponseLookup.containsValue(status.getRequestId())) { return; }
       ContentValues values = new ContentValues();
-      values.put(DevicesContentProvider.ATTR_NAME, "Generic device"); //TODO
+      values.put(DevicesContentProvider.ATTR_NAME, status.getDeviceType()); //TODO
       values.put(DevicesContentProvider.ATTR_STATE, status.getState() + ""); //TODO change underlying table so it stores int
       values.put(DevicesContentProvider.ATTR_DEVICE_ID, status.getDeviceId().toString());
       if (deviceReply.getAddress() != null) {

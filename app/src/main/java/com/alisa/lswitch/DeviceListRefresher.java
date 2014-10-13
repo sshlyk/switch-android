@@ -26,16 +26,20 @@ public class DeviceListRefresher {
   }
 
   private class Refresher implements Runnable {
+    private final String passCode;
+    public Refresher(String passCode) {
+      this.passCode = passCode;
+    }
     @Override
     public void run() {
-      DeviceListService.refreshListOfDevices(context);
+      DeviceListService.refreshListOfDevices(context, passCode);
       Log.d(TAG, "List refreshed");
     }
   }
 
-  public void start() {
+  public void start(String passCode) {
     task = scheduler.scheduleAtFixedRate(
-        new Refresher(),
+        new Refresher(passCode),
         0, //initial delay
         intervalSec,
         TimeUnit.SECONDS

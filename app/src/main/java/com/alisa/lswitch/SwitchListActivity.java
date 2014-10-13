@@ -3,11 +3,13 @@ package com.alisa.lswitch;
 import android.app.ListActivity;
 import android.app.LoaderManager;
 import android.content.CursorLoader;
+import android.content.Intent;
 import android.content.Loader;
+import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.util.Log;
+import android.preference.PreferenceManager;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -17,22 +19,20 @@ import android.widget.TextView;
 
 import com.alisa.lswitch.content_providers.DevicesContentProvider;
 import com.alisa.lswitch.services.DeviceListService;
-import com.alisa.lswitch.services.DevicesService;
 import com.alisa.lswitch.services.OperateDeviceAsyncTask;
 
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-
+import java.nio.charset.StandardCharsets;
 
 public class SwitchListActivity extends ListActivity implements LoaderManager.LoaderCallbacks<Cursor> {
 
   private SimpleCursorAdapter cursorAdapter;
-  private PopupWindow popupWindow;
   private static final long DEVICE_LIST_UPDATE_INTERVAL_SEC = 10;
   private static final String TAG = SwitchListActivity.class.getSimpleName();
-
-  private static final String BUNDLE_LIST_TIMESTAMP = "list_timestamp";
   private DeviceListRefresher mDeviceListRefresher;
+  private SharedPreferences preferences;
+
+  private int serverPort;
+  private String passCode;
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
@@ -43,21 +43,26 @@ public class SwitchListActivity extends ListActivity implements LoaderManager.Lo
     setListAdapter(cursorAdapter);
     getLoaderManager().initLoader(0, null, this);
 
+    preferences = PreferenceManager.getDefaultSharedPreferences(this);
+
     mDeviceListRefresher = new DeviceListRefresher(
         DEVICE_LIST_UPDATE_INTERVAL_SEC, getApplicationContext());
-
   }
 
   @Override
-  protected void onStart() {
-    super.onStart();
-    mDeviceListRefresher.start();
-  }
-
-  @Override
-  protected void onStop() {
+  protected void onPause() {
     super.onStop();
     mDeviceListRefresher.stop();
+  }
+
+  @Override
+  protected void onResume() {
+    super.onResume();
+    serverPort = Integer.parseInt(preferences.getString(
+        getResources().getString(R.string.portNumberKey),
+        getResources().getString(R.string.defaultPortNumber)));
+    passCode = preferences.getString(getResources().getString(R.string.passCodeKey), "");
+    mDeviceListRefresher.start(passCode);
   }
 
   @Override
@@ -75,39 +80,32 @@ public class SwitchListActivity extends ListActivity implements LoaderManager.Lo
     int id = item.getItemId();
     switch (id) {
     case R.id.action_refresh:
-      DeviceListService.refreshListOfDevices(getApplicationContext());
+      DeviceListService.refreshListOfDevices(getApplicationContext(), passCode);
+      return true;
+    case R.id.action_settings:
+      Intent intent = new Intent(this, SettingsActivity.class);
+      startActivity(intent);
       return true;
     default:
       return super.onOptionsItemSelected(item);
     }
   }
 
-  //TODO device info popup
-//  public void deviceInfo(View view) {
-//    View popupView = getLayoutInflater().inflate(R.layout.device_info_popup, null);
-//    if (popupWindow != null) { popupWindow.dismiss(); }
-//    popupWindow = new PopupWindow(
-//        popupView,
-//        LinearLayout.LayoutParams.WRAP_CONTENT,
-//        LinearLayout.LayoutParams.WRAP_CONTENT,
-//        false //focusable
-//    );
-//    popupWindow.setAnimationStyle(android.R.style.Animation_Dialog);
-//    popupWindow.showAtLocation(popupView, Gravity.CENTER, 0,0);
-//    popupView.setOnClickListener(new View.OnClickListener() {
-//      @Override
-//      public void onClick(View v) { popupWindow.dismiss(); }
-//    });
-//  }
+  public void blinkSimpleSwitch(View view) {
+    operateSwitch(view, OperateDeviceAsyncTask.Request.Operation.BLINK);
+  }
 
   public void toggleSimpleSwitch(View view) {
-    final String deviceId = ((TextView) view.findViewById(R.id.device_name)).getText().toString();
-    //DevicesService.toggleSimpleSwitch(deviceId, getApplicationContext());
+    operateSwitch(view, OperateDeviceAsyncTask.Request.Operation.TOGGLE);
+  }
+
+  private void operateSwitch(View view, OperateDeviceAsyncTask.Request.Operation operation) {
+    final String deviceId = ((TextView) view.findViewById(R.id.device_id)).getText().toString();
     final OperateDeviceAsyncTask.Request request = new OperateDeviceAsyncTask.Request();
     request.setDeviceId(deviceId);
-    new OperateDeviceAsyncTask(
-        getApplicationContext()
-    ).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, request);
+    request.setOperation(operation);
+    new OperateDeviceAsyncTask(passCode, serverPort, getApplicationContext())
+        .executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, request);
   }
 
   /* ****************************************************************************************** */
