@@ -3,4 +3,7 @@
     <string name="defaultPortNumber">61235</string>
     <string name="passCodeKey">passCode</string>
     <string name="portNumberKey">portNumber</string>
+    <integer name="tag_device_id">1</integer>
+    <integer name="tag_type">2</integer>
+    <integer name="tag_state">3</integer>
 </resources>

@@ -1,4 +1,4 @@
-package com.alisa.lswitch.db;
+package com.alisa.lswitch.content_providers;
 
 import android.content.Context;
 import android.database.sqlite.SQLiteDatabase;
@@ -22,26 +22,14 @@ public class DevicesDatabaseHelper extends SQLiteOpenHelper {
             "name TEXT," +
             "type TEXT," +
             "state INTEGER," +
-            /* indicates whether there is pending request
-               -1 - no pending request, otherwise request issued timestamp
-             */
-            "operation_timestamp INTEGER DEFAULT 0," +
-            "deleted INTEGER DEFAULT 0," +
-            "last_ip TEXT," +
             "last_updated INTEGER," +
             "UNIQUE (device_id) ON CONFLICT REPLACE" +
             ");",
         TABLE_DEVICES
     );
 
-    //TODO this index is probably not needed
     final String createDeviceIndex = String.format(
         "CREATE INDEX device_uuid_idx ON %s (device_id);",
-        TABLE_DEVICES
-    );
-
-    final String createDeletedIndex = String.format(
-        "CREATE INDEX device_deleted_idx ON %s (deleted);",
         TABLE_DEVICES
     );
 
@@ -49,7 +37,6 @@ public class DevicesDatabaseHelper extends SQLiteOpenHelper {
     try {
       db.execSQL(createTableSql);
       db.execSQL(createDeviceIndex);
-      db.execSQL(createDeletedIndex);
       db.setTransactionSuccessful();
     } finally {
       db.endTransaction();

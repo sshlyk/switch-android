@@ -17,13 +17,12 @@ import com.alisa.lswitch.content_providers.DevicesContentProvider;
 public class DeviceCursorAdapter extends SimpleCursorAdapter {
   private static final String[] from = new String[] {
       DevicesContentProvider.ATTR_NAME,
+      DevicesContentProvider.ATTR_TYPE,
       DevicesContentProvider.ATTR_DEVICE_ID,
       DevicesContentProvider.ATTR_STATE
   };
   private static final int[] to = new int[] {
-      R.id.device_name,
-      R.id.device_id,
-      R.id.device_status
+      R.id.device_name
   };
 
   public DeviceCursorAdapter(Context context) {
@@ -33,47 +32,16 @@ public class DeviceCursorAdapter extends SimpleCursorAdapter {
   @Override
   public void bindView(View view, Context context, Cursor cursor) {
     super.bindView(view, context, cursor);
-    final int deviceName = cursor.getColumnIndex(DevicesContentProvider.ATTR_NAME);
-    final int stateCol = cursor.getColumnIndex(DevicesContentProvider.ATTR_STATE);
-    final int lastOperationTimestampCol = cursor.getColumnIndex(
-        DevicesContentProvider.ATTR_OPERATION_TIMESTAMP
-    );
+    final String name = cursor.getString(cursor.getColumnIndex(DevicesContentProvider.ATTR_NAME));
+    final String type = cursor.getString(cursor.getColumnIndex(DevicesContentProvider.ATTR_TYPE));
+    final String deviceId = cursor.getString(cursor.getColumnIndex(DevicesContentProvider.ATTR_DEVICE_ID));
+    final int state = cursor.getInt(cursor.getColumnIndex(DevicesContentProvider.ATTR_STATE));
 
-    //TODO instead of dynamically changing the view, each switch type should has its own view
-    if ("switch".equals(cursor.getInt(deviceName))) {
-      int statusBackground = R.color.LightGrey;
-      if (cursor.getInt(stateCol) == 1) {
-        statusBackground = R.color.Yellow;
-      }
-      view.findViewById(R.id.device_status).setBackgroundResource(statusBackground);
-    } else {
-      view.findViewById(R.id.device_status).setVisibility(View.GONE);
-    }
-
-    final int lastOperationTimestamp = cursor.getInt(lastOperationTimestampCol);
-
-    //TODO move to constants somewhere
-    final long maxOperationInervalSec = 5;
-    final boolean operationInProgress = lastOperationTimestamp > 0
-        && System.currentTimeMillis()/1000 - lastOperationTimestamp < maxOperationInervalSec;
-    view.setEnabled(!operationInProgress);
-
-    final FrameLayout imgHolder = (FrameLayout) view.findViewById(R.id.device_status_img_holder);
-    imgHolder.removeAllViews();
-    //TODO set some icon
-  }
-
-  @Override
-  public void setViewText(TextView v, String text) {
-    super.setViewText(v, convert(v.getId(), text));
-  }
-
-  private String convert(int id, String text) {
-    switch (id) {
-      case (R.id.device_status):
-        return "0".equals(text) ? "OFF" : "ON";
-      default:
-        return text;
+    view.setTag(R.integer.tag_device_id, deviceId);
+    view.setTag(R.integer.tag_state, state);
+    view.setTag(R.integer.tag_type, type);
+    if ("switch".equals(type) && state == 1) {
+      view.setBackgroundColor(view.getResources().getColor(R.color.Yellow));
     }
   }
 }

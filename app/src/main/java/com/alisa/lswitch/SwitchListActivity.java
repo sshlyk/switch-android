@@ -26,7 +26,7 @@ import java.nio.charset.StandardCharsets;
 public class SwitchListActivity extends ListActivity implements LoaderManager.LoaderCallbacks<Cursor> {
 
   private SimpleCursorAdapter cursorAdapter;
-  private static final long DEVICE_LIST_UPDATE_INTERVAL_SEC = 10;
+  private static final long DEVICE_LIST_UPDATE_INTERVAL_SEC = 2;
   private static final String TAG = SwitchListActivity.class.getSimpleName();
   private DeviceListRefresher mDeviceListRefresher;
   private SharedPreferences preferences;
@@ -50,8 +50,8 @@ public class SwitchListActivity extends ListActivity implements LoaderManager.Lo
   }
 
   @Override
-  protected void onStop() {
-    super.onStop();
+  protected void onPause() {
+    super.onPause();
     mDeviceListRefresher.stop();
   }
 
@@ -92,20 +92,21 @@ public class SwitchListActivity extends ListActivity implements LoaderManager.Lo
   }
 
   public void blinkSimpleSwitch(View view) {
-    operateSwitch(view, OperateDeviceAsyncTask.Request.Operation.BLINK);
-  }
+    final String deviceId = (String) view.getTag(R.integer.tag_device_id);
+    final int state = (Integer) view.getTag(R.integer.tag_state);
+    final String type = (String) view.getTag(R.integer.tag_type);
 
-  public void toggleSimpleSwitch(View view) {
-    operateSwitch(view, OperateDeviceAsyncTask.Request.Operation.TOGGLE);
-  }
-
-  private void operateSwitch(View view, OperateDeviceAsyncTask.Request.Operation operation) {
-    final String deviceId = ((TextView) view.findViewById(R.id.device_id)).getText().toString();
+    OperateDeviceAsyncTask.Request.Operation op;
+    if ("switch".equals(type)) {
+      op = state == 0 ? OperateDeviceAsyncTask.Request.Operation.TURN_ON : OperateDeviceAsyncTask.Request.Operation.TURN_OFF;
+    } else {
+      op = OperateDeviceAsyncTask.Request.Operation.BLINK;
+    }
     final OperateDeviceAsyncTask.Request request = new OperateDeviceAsyncTask.Request();
     request.setDeviceId(deviceId);
-    request.setOperation(operation);
+    request.setOperation(op);
     new OperateDeviceAsyncTask(passCode, serverPort, getApplicationContext())
-        .executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, request);
+            .executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, request);
   }
 
   /* ****************************************************************************************** */

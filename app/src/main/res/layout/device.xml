@@ -10,30 +10,8 @@
     <TextView
         android:id="@+id/device_name"
         android:layout_width="fill_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="fill_parent"
         android:minHeight="30dp"
-        android:hint="device-type"
-        android:gravity="center_vertical"/>
-
-    <TextView
-        android:id="@+id/device_id"
-        android:layout_width="fill_parent"
-        android:layout_height="wrap_content"
-        android:minHeight="30dp"
-        android:hint="device-id"
-        android:gravity="center_vertical"/>
-
-    <TextView
-        android:id="@+id/device_status"
-        android:layout_width="fill_parent"
-        android:layout_height="wrap_content"
-        android:hint="status"
-        android:gravity="center"
-        android:textAllCaps="true"/>
-
-    <FrameLayout
-        android:id="@+id/device_status_img_holder"
-        android:layout_width="100dp"
-        android:layout_height="100dp"></FrameLayout>
-
+        android:hint="device-name"
+        android:gravity="center"/>
 </LinearLayout>

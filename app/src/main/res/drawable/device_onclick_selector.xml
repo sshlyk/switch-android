@@ -9,10 +9,5 @@
     <!-- Device is ready -->
     <item
         android:state_enabled="true"
-        android:drawable="@color/White" />
-
-    <!-- Request to operate device is currently in-flight -->
-    <item
-        android:state_enabled="false"
-        android:drawable="@color/LightGrey"/>
+        android:drawable="@color/LightBlue" />
 </selector>

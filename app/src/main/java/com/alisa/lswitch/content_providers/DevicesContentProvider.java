@@ -2,16 +2,17 @@ package com.alisa.lswitch.content_providers;
 
 import android.content.ContentProvider;
 import android.content.ContentValues;
+import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteQueryBuilder;
 import android.net.Uri;
+import android.os.SystemClock;
 import android.text.TextUtils;
 import android.util.Log;
 
-import com.alisa.lswitch.db.DevicesDatabaseHelper;
-
 import java.util.List;
+import java.util.UUID;
 
 public class DevicesContentProvider extends ContentProvider {
 
@@ -21,13 +22,10 @@ public class DevicesContentProvider extends ContentProvider {
   public static final Uri DEVICES_CONTENT_URI =
       Uri.parse(String.format("content://%s/%s", AUTHORITY, DEVICES_PATH));
 
-  public static final String ATTR_ID = "_id";
-  public static final String ATTR_NAME = "name";
   public static final String ATTR_DEVICE_ID = "device_id";
-  public static final String ATTR_DELETED = "deleted";
+  public static final String ATTR_NAME = "name";
+  public static final String ATTR_TYPE = "type";
   public static final String ATTR_STATE = "state";
-  public static final String ATTR_OPERATION_TIMESTAMP = "operation_timestamp";
-  public static final String ATTR_IP = "last_ip";
   public static final String ATTR_LAST_UPDATED = "last_updated";
 
   private static final String TAG = DevicesContentProvider.class.getSimpleName();
@@ -40,24 +38,14 @@ public class DevicesContentProvider extends ContentProvider {
 
   @Override
   public Cursor query(Uri uri, String[] projection, String selection, String[] selectionArgs, String sortOrder) {
-    SQLiteQueryBuilder qb = new SQLiteQueryBuilder();
-    qb.setTables(DevicesDatabaseHelper.TABLE_DEVICES);
-    if (projection != null) {
-      final String[] projectionWithId = new String[projection.length + 1];
-      projectionWithId[0] = ATTR_ID;
-      System.arraycopy(projection, 0, projectionWithId, 1, projection.length);
-      projection = projectionWithId;
-    }
-
     List<String> segments = uri.getPathSegments();
-    if (segments.size() < 1) { return null; }
+    if (segments.size() == 0) { return null; }
     String path = segments.get(0);
 
     if (DEVICES_PATH.equals(path)) {
       SQLiteQueryBuilder query = new SQLiteQueryBuilder();
       query.setTables(DevicesDatabaseHelper.TABLE_DEVICES);
       if (selection != null ) { query.appendWhere(selection); }
-      query.appendWhere(String.format("%s = 0", ATTR_DELETED));
       if (segments.size() > 1) {
         final String deviceId = segments.get(1);
         query.appendWhere(String.format(" AND %s = '%s'", ATTR_DEVICE_ID, deviceId));
@@ -89,11 +77,25 @@ public class DevicesContentProvider extends ContentProvider {
     final String path = segments.get(0);
 
     if (DEVICES_PATH.equals(path)) {
+      final String deviceId = values.getAsString(ATTR_DEVICE_ID);
+      if (deviceId == null) { return null; }
+
       SQLiteDatabase db = dbHelper.getWritableDatabase();
-      if (values.containsKey(ATTR_DEVICE_ID)) {
-        values.put(ATTR_LAST_UPDATED, System.currentTimeMillis()/1000);
-        values.put(ATTR_DELETED, 0);
-        db.insert(DevicesDatabaseHelper.TABLE_DEVICES, null, values);
+      Cursor cursor = null;
+      db.beginTransaction();
+      try {
+        cursor = db.query(DevicesDatabaseHelper.TABLE_DEVICES,
+                new String[] { ATTR_DEVICE_ID }, ATTR_DEVICE_ID + "=?", new String[] { deviceId },
+                null, null, null);
+        if (cursor.moveToNext()) {
+          update(deviceUri(deviceId), values, null, null);
+        } else {
+          db.insert(DevicesDatabaseHelper.TABLE_DEVICES, null, values);
+        }
+        db.setTransactionSuccessful();
+      } finally {
+        if (cursor != null) { cursor.close(); }
+        db.endTransaction();
       }
     }
 
@@ -104,27 +106,30 @@ public class DevicesContentProvider extends ContentProvider {
   @Override
   public int delete(Uri uri, String selection, String[] selectionArgs) {
     List<String> segments = uri.getPathSegments();
-    if (segments.size() < 2) return 0;
+    if (segments.size() < 1) return 0;
     final String path = segments.get(0);
 
-    int recordsRemoved = 0;
+    int deletedRows = 0;
     if (DEVICES_PATH.equals(path)) {
-      final String deviceId = segments.get(1);
-      final ContentValues values = new ContentValues();
-      values.put(ATTR_DELETED, 1);
-
-      recordsRemoved = dbHelper.getWritableDatabase().update(
-          DevicesDatabaseHelper.TABLE_DEVICES,
-          values,
-          String.format("%s = ?", ATTR_DEVICE_ID),
-          new String[]{ deviceId }
-      );
-      if (recordsRemoved > 0) {
-        Log.d(TAG, "Device has been marked as deleted: " + deviceId);
+      final String whereClause;
+      final String[] whereArgs;
+      if (segments.size() > 1) {
+        final String deviceId = segments.get(1);
+        whereClause = String.format("%s = ?", ATTR_DEVICE_ID);
+        whereArgs = new String[]{ deviceId };
+      } else {
+        whereClause = selection;
+        whereArgs = selectionArgs;
       }
+
+      deletedRows = dbHelper.getWritableDatabase().delete(
+              DevicesDatabaseHelper.TABLE_DEVICES, whereClause, whereArgs);
     }
-    getContext().getContentResolver().notifyChange(uri, null);
-    return recordsRemoved;
+    if (deletedRows > 0) {
+      getContext().getContentResolver().notifyChange(uri, null);
+    }
+
+    return deletedRows;
   }
 
   @Override
@@ -154,5 +159,42 @@ public class DevicesContentProvider extends ContentProvider {
 
     getContext().getContentResolver().notifyChange(uri, null);
     return rowsUpdated;
+  }
+
+  public static void removeStaleDevices(final Context context) {
+    final long elapsedTime = SystemClock.elapsedRealtime();
+    final long threshold = 10000;
+    final String whereClause = DevicesContentProvider.ATTR_LAST_UPDATED + " < ?"
+            + " OR " + DevicesContentProvider.ATTR_LAST_UPDATED + " > ?";
+    final String[] whereArgs = {
+            Long.toString((elapsedTime - threshold)),
+            Long.toString((elapsedTime + threshold)) };
+    context.getContentResolver().delete(
+            DevicesContentProvider.DEVICES_CONTENT_URI, whereClause, whereArgs);
+  }
+
+  public static void insertDevice(final Context context, final UUID deviceId, final String name,
+                                  final String type, final int state) {
+    final ContentValues values = new ContentValues();
+    values.put(DevicesContentProvider.ATTR_DEVICE_ID, deviceId.toString());
+    values.put(DevicesContentProvider.ATTR_NAME, name);
+    values.put(DevicesContentProvider.ATTR_TYPE, type);
+    values.put(DevicesContentProvider.ATTR_STATE, state);
+    values.put(DevicesContentProvider.ATTR_LAST_UPDATED, SystemClock.elapsedRealtime());
+    context.getContentResolver().insert(DevicesContentProvider.DEVICES_CONTENT_URI, values);
+  }
+
+  public static void updateDeviceState(final Context context, final UUID deviceId, final int state) {
+    final ContentValues values = new ContentValues();
+    values.put(DevicesContentProvider.ATTR_STATE, state);
+    context.getContentResolver().update(deviceUri(deviceId), values, null, null);
+  }
+
+  public static Uri deviceUri(final UUID deviceId) {
+    return deviceUri(deviceId.toString());
+  }
+
+  public static Uri deviceUri(final String deviceId) {
+    return DEVICES_CONTENT_URI.buildUpon().appendEncodedPath(deviceId).build();
   }
 }
