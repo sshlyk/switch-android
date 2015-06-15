@@ -4,8 +4,8 @@
     android:orientation="vertical"
     android:layout_width="match_parent"
     android:layout_height="100dp"
-    android:onClick="blinkSimpleSwitch"
-    android:background="@drawable/device_onclick_selector">
+    android:onClick="operateSwitch"
+    android:background="@drawable/device_selector">
 
     <TextView
         android:id="@+id/device_name"

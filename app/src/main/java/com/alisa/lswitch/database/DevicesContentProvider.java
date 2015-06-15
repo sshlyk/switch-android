@@ -1,4 +1,4 @@
-package com.alisa.lswitch.content_providers;
+package com.alisa.lswitch.database;
 
 import android.content.ContentProvider;
 import android.content.ContentValues;
@@ -9,7 +9,6 @@ import android.database.sqlite.SQLiteQueryBuilder;
 import android.net.Uri;
 import android.os.SystemClock;
 import android.text.TextUtils;
-import android.util.Log;
 
 import java.util.List;
 import java.util.UUID;
@@ -184,7 +183,7 @@ public class DevicesContentProvider extends ContentProvider {
     context.getContentResolver().insert(DevicesContentProvider.DEVICES_CONTENT_URI, values);
   }
 
-  public static void updateDeviceState(final Context context, final UUID deviceId, final int state) {
+  public static void updateDeviceState(final Context context, final String deviceId, final int state) {
     final ContentValues values = new ContentValues();
     values.put(DevicesContentProvider.ATTR_STATE, state);
     context.getContentResolver().update(deviceUri(deviceId), values, null, null);

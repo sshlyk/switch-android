@@ -24,12 +24,12 @@
         </activity>
 
         <provider
-            android:name=".content_providers.DevicesContentProvider"
+            android:name=".database.DevicesContentProvider"
             android:authorities="com.alisa.lswitch.devicesprovider"
             android:exported="false">
         </provider>
         <service
-            android:name=".services.DeviceListService"
+            android:name=".service.DeviceListService"
             android:exported="false"/>
     </application>
 

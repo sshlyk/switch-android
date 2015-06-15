@@ -1,9 +1,8 @@
-package com.alisa.lswitch.content_providers;
+package com.alisa.lswitch.database;
 
 import android.content.Context;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
-import android.util.Log;
 
 public class DevicesDatabaseHelper extends SQLiteOpenHelper {
   public static final String TABLE_DEVICES = "devices";

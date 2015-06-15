@@ -1,13 +1,11 @@
-package com.alisa.lswitch.services;
+package com.alisa.lswitch.service;
 
-import android.content.ContentValues;
 import android.content.Context;
-import android.database.Cursor;
 import android.os.AsyncTask;
 import android.util.Log;
 
 import com.alisa.lswitch.client.model.SwitchRequest;
-import com.alisa.lswitch.content_providers.DevicesContentProvider;
+import com.alisa.lswitch.database.DevicesContentProvider;
 import com.alisa.lswitch.utils.Utils;
 
 import java.io.IOException;
@@ -50,12 +48,14 @@ public class OperateDeviceAsyncTask extends AsyncTask<OperateDeviceAsyncTask.Req
       case TURN_OFF:
         operation = SwitchRequest.Operation.SET_OFF;
         break;
-      case BLINK:
-        operation = SwitchRequest.Operation.BLINK;
+      case PULSE:
+        operation = SwitchRequest.Operation.PULSE;
         break;
       default:
         return null;
     }
+    DevicesContentProvider.updateDeviceState(context, deviceId,
+            operation == SwitchRequest.Operation.SET_ON ? 1 : 0);
     operateSimpleSwitch(deviceId, operation, context);
     DeviceListService.refreshListOfDevices(context, passCode);
     return null;
@@ -109,7 +109,7 @@ public class OperateDeviceAsyncTask extends AsyncTask<OperateDeviceAsyncTask.Req
     private String deviceId;
     private Operation operation;
     public enum Operation {
-      TURN_ON, TURN_OFF, BLINK
+      TURN_ON, TURN_OFF, PULSE
     }
 
     public String getDeviceId() {

@@ -3,7 +3,7 @@ package com.alisa.lswitch;
 import android.content.Context;
 import android.util.Log;
 
-import com.alisa.lswitch.services.DeviceListService;
+import com.alisa.lswitch.service.DeviceListService;
 
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;

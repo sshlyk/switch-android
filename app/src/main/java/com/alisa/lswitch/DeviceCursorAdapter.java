@@ -2,17 +2,10 @@ package com.alisa.lswitch;
 
 import android.content.Context;
 import android.database.Cursor;
-import android.graphics.Movie;
-import android.graphics.drawable.AnimationDrawable;
-import android.os.SystemClock;
-import android.util.Log;
 import android.view.View;
-import android.widget.FrameLayout;
-import android.widget.ImageView;
 import android.widget.SimpleCursorAdapter;
-import android.widget.TextView;
 
-import com.alisa.lswitch.content_providers.DevicesContentProvider;
+import com.alisa.lswitch.database.DevicesContentProvider;
 
 public class DeviceCursorAdapter extends SimpleCursorAdapter {
   private static final String[] from = new String[] {
@@ -40,8 +33,6 @@ public class DeviceCursorAdapter extends SimpleCursorAdapter {
     view.setTag(R.integer.tag_device_id, deviceId);
     view.setTag(R.integer.tag_state, state);
     view.setTag(R.integer.tag_type, type);
-    if ("switch".equals(type) && state == 1) {
-      view.setBackgroundColor(view.getResources().getColor(R.color.Yellow));
-    }
+    view.setActivated("switch".equals(type) && state > 0);
   }
 }

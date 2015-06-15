@@ -13,15 +13,11 @@ import android.preference.PreferenceManager;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.PopupWindow;
 import android.widget.SimpleCursorAdapter;
-import android.widget.TextView;
 
-import com.alisa.lswitch.content_providers.DevicesContentProvider;
-import com.alisa.lswitch.services.DeviceListService;
-import com.alisa.lswitch.services.OperateDeviceAsyncTask;
-
-import java.nio.charset.StandardCharsets;
+import com.alisa.lswitch.database.DevicesContentProvider;
+import com.alisa.lswitch.service.DeviceListService;
+import com.alisa.lswitch.service.OperateDeviceAsyncTask;
 
 public class SwitchListActivity extends ListActivity implements LoaderManager.LoaderCallbacks<Cursor> {
 
@@ -91,36 +87,36 @@ public class SwitchListActivity extends ListActivity implements LoaderManager.Lo
     }
   }
 
-  public void blinkSimpleSwitch(View view) {
+  public void operateSwitch(View view) {
     final String deviceId = (String) view.getTag(R.integer.tag_device_id);
     final int state = (Integer) view.getTag(R.integer.tag_state);
     final String type = (String) view.getTag(R.integer.tag_type);
 
     OperateDeviceAsyncTask.Request.Operation op;
     if ("switch".equals(type)) {
-      op = state == 0 ? OperateDeviceAsyncTask.Request.Operation.TURN_ON : OperateDeviceAsyncTask.Request.Operation.TURN_OFF;
+      op = state == 0 ?
+              OperateDeviceAsyncTask.Request.Operation.TURN_ON :
+              OperateDeviceAsyncTask.Request.Operation.TURN_OFF;
     } else {
-      op = OperateDeviceAsyncTask.Request.Operation.BLINK;
+      op = OperateDeviceAsyncTask.Request.Operation.PULSE;
     }
     final OperateDeviceAsyncTask.Request request = new OperateDeviceAsyncTask.Request();
-    request.setDeviceId(deviceId);
+    request.setDeviceId(  deviceId);
     request.setOperation(op);
     new OperateDeviceAsyncTask(passCode, serverPort, getApplicationContext())
             .executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR, request);
   }
 
-  /* ****************************************************************************************** */
   @Override
   public Loader<Cursor> onCreateLoader(int id, Bundle args) {
-    final CursorLoader cursorLoader = new CursorLoader(
+    return new CursorLoader(
         this,
         DevicesContentProvider.DEVICES_CONTENT_URI,
-        null, //projection, for now return all fields
-        null,
-        null,
-        null
+        null, // projection
+        null, // selection
+        null, // selection args
+        DevicesContentProvider.ATTR_NAME // ordering
     );
-    return cursorLoader;
   }
 
   @Override

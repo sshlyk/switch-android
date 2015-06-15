@@ -1,16 +1,18 @@
-package com.alisa.lswitch.services;
+package com.alisa.lswitch.service;
 
 import android.app.IntentService;
-import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.SystemClock;
+import android.preference.PreferenceManager;
 import android.util.Log;
 
+import com.alisa.lswitch.R;
 import com.alisa.lswitch.client.model.BaseRequest;
 import com.alisa.lswitch.client.model.StatusReply;
 import com.alisa.lswitch.client.model.StatusRequest;
-import com.alisa.lswitch.content_providers.DevicesContentProvider;
+import com.alisa.lswitch.database.DevicesContentProvider;
 import com.alisa.lswitch.utils.Utils;
 
 import java.io.IOException;
@@ -55,53 +57,17 @@ public class DeviceListService extends IntentService {
     if (passCode == null) { return; }
     refresh(passCode);
     DevicesContentProvider.removeStaleDevices(getApplicationContext());
-
-    //TODO remove testing only
-    //insertDummyRecord();
     refreshing = false;
   }
 
   private void refresh(String passCode) {
-    //TODO broadcast devices status request, listen for response and update list of devices
     DatagramSocket socket = null;
-    final int port = 51235; //TODO move to a config
     try {
-      final InetAddress broadcastAddress = Utils.getWiFiBroadcastIp(getApplicationContext());
-      if (broadcastAddress == null) {
-        Log.d(TAG, "Not connected to WiFi or broadcast address is not available");
-        return;
-      }
-      Log.d(TAG, "Broadcast address: " + broadcastAddress);
       socket = new DatagramSocket();
       socket.setBroadcast(true);
-      final DatagramSocket finalSocket = socket;
-
-      final StatusRequest statusRequest = new StatusRequest();
-      statusRequest.sign(passCode.getBytes("UTF-8"));
-      final byte[] bytes = statusRequest.serialize();
-      for (int i = 0; i < statusRequestBurstSize; i++) {
-        finalSocket.send(new DatagramPacket(
-            bytes,
-            bytes.length,
-            broadcastAddress,
-            port
-        ));
-      }
-
-      //wait for replies
-      byte[] reply = new byte[1024];
-      DatagramPacket deviceReply = new DatagramPacket(reply, reply.length);
-      final int replyWaitInterval = 1000  ;
-      final long waitStart = SystemClock.elapsedRealtime();
-      long elapsed = 0;
-      do {
-        socket.setSoTimeout((int)(replyWaitInterval - elapsed));
-        socket.receive(deviceReply);
-        elapsed = SystemClock.elapsedRealtime() - waitStart;
-        updateDevicesList(deviceReply, getContentResolver());
-      } while (elapsed < replyWaitInterval);
+      sendDeviceStatusRequest(socket, passCode);
+      listenForDevicesStatus(socket, 1000);
     } catch (SocketTimeoutException e) {
-      //refresh complete
       Log.d(TAG, "Refresh complete. Timeout.");
     } catch (IOException e) {
       Log.d(TAG, "Refresh failed due to IO exception", e);
@@ -110,7 +76,48 @@ public class DeviceListService extends IntentService {
     }
   }
 
-  private void updateDevicesList(DatagramPacket deviceReply, ContentResolver contentResolver) {
+  private void sendDeviceStatusRequest(final DatagramSocket socket, final String passCode)
+          throws IOException {
+    final DatagramSocket finalSocket = socket;
+    final InetAddress broadcastAddress = Utils.getWiFiBroadcastIp(getApplicationContext());
+    final SharedPreferences preferences =  PreferenceManager.getDefaultSharedPreferences(this);
+    final int port = Integer.parseInt(preferences.getString(
+            getResources().getString(R.string.portNumberKey),
+            getResources().getString(R.string.defaultPortNumber)));
+    if (broadcastAddress == null) {
+      Log.d(TAG, "Not connected to WiFi or broadcast address is not available");
+      return;
+    }
+    Log.d(TAG, "Broadcast address: " + broadcastAddress);
+    final StatusRequest statusRequest = new StatusRequest();
+    statusRequest.sign(passCode.getBytes("UTF-8"));
+    final byte[] bytes = statusRequest.serialize();
+    for (int i = 0; i < statusRequestBurstSize; i++) {
+      finalSocket.send(new DatagramPacket(
+              bytes,
+              bytes.length,
+              broadcastAddress,
+              port
+      ));
+    }
+  }
+
+  private void listenForDevicesStatus(final DatagramSocket socket, final int listenTime)
+          throws IOException {
+    byte[] reply = new byte[1024];
+    DatagramPacket deviceReply = new DatagramPacket(reply, reply.length);
+    final long waitStart = SystemClock.elapsedRealtime();
+    long elapsed = 0;
+    do {
+      socket.setSoTimeout((int)(listenTime - elapsed));
+      socket.receive(deviceReply);
+      elapsed = SystemClock.elapsedRealtime() - waitStart;
+      updateDevicesList(deviceReply);
+    } while (elapsed < listenTime);
+
+  }
+
+  private void updateDevicesList(DatagramPacket deviceReply) {
     if (deviceReply == null) { return; }
     try {
       final StatusReply status = new StatusReply(ByteBuffer.wrap(deviceReply.getData()));
@@ -125,13 +132,5 @@ public class DeviceListService extends IntentService {
     } catch (BaseRequest.SerializationException e) {
       Log.d(TAG, "Could not parse reply from a device. Ignoring. IP: " + deviceReply.getAddress());
     }
-  }
-
-  //TODO remove
-  private void insertDummyRecord() {
-    final byte[] record = new StatusReply() {{
-      setDeviceId(UUID.randomUUID());
-    }}.serialize();
-    updateDevicesList(new DatagramPacket(record, record.length), getContentResolver());
   }
 }
