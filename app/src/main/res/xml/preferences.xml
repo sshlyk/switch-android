@@ -10,7 +10,7 @@
         android:maxLength="30"
         android:imeOptions="actionDone"
         android:selectAllOnFocus="true"
-        android:defaultValue="helloSwitch"
+        android:defaultValue="@string/defaultPassword"
         />
     <EditTextPreference
         android:key="@string/portNumberKey"

@@ -57,7 +57,9 @@ public class SwitchListActivity extends ListActivity implements LoaderManager.Lo
     serverPort = Integer.parseInt(preferences.getString(
         getResources().getString(R.string.portNumberKey),
         getResources().getString(R.string.defaultPortNumber)));
-    passCode = preferences.getString(getResources().getString(R.string.passCodeKey), "");
+    passCode = preferences.getString(
+        getResources().getString(R.string.passCodeKey),
+        getResources().getString(R.string.defaultPassword));
     mDeviceListRefresher.start(passCode);
   }
 
