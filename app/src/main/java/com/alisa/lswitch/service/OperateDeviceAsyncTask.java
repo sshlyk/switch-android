@@ -18,7 +18,7 @@ public class OperateDeviceAsyncTask extends AsyncTask<OperateDeviceAsyncTask.Req
 
   private Context context;
   private final String TAG = OperateDeviceAsyncTask.class.getSimpleName();
-  private final int requestBurstSize = 100;
+  private final int requestBurstSize = 200;
   private int serverPort;
   private String passCode;
 

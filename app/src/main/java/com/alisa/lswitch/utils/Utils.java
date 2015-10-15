@@ -1,6 +1,7 @@
 package com.alisa.lswitch.utils;
 
 import android.content.Context;
+import android.net.DhcpInfo;
 import android.net.wifi.WifiManager;
 import android.util.Log;
 
@@ -21,40 +22,21 @@ public class Utils {
    * @return broadcast address or null if not connected to wifi
    * @throws SocketException
    */
-  public static InetAddress getWiFiBroadcastIp(Context ctx) throws SocketException {
-    WifiManager wifiManager = (WifiManager) ctx.getSystemService(Context.WIFI_SERVICE);
-    String wifiMacAddress = wifiManager.getConnectionInfo().getMacAddress();
-    for (NetworkInterface iface: Collections.list(NetworkInterface.getNetworkInterfaces())) {
-      String hardwareMac = toMacAddress(iface.getHardwareAddress());
-      if (toMacAddress(iface.getHardwareAddress()).equals(wifiMacAddress)) {
-        for (InterfaceAddress interfaceAddress : iface.getInterfaceAddresses()) {
-          if (interfaceAddress.getBroadcast() != null) {
-            final String broadcastAddress = interfaceAddress.getBroadcast().toString().substring(1);
-            try {
-              return InetAddress.getByName(broadcastAddress);
-            } catch (UnknownHostException e) {
-              Log.d(TAG, "Failed to resolve broadcast address: " + broadcastAddress);
-              return null;
-            }
-          }
-        }
-      }
+  public static InetAddress getWiFiBroadcastIp(Context ctx) {
+    WifiManager myWifiManager = (WifiManager) ctx.getSystemService(Context.WIFI_SERVICE);
+    DhcpInfo myDhcpInfo = myWifiManager.getDhcpInfo();
+    if (myDhcpInfo == null || myDhcpInfo.ipAddress == 0) {
+      return null;
     }
-    return null;
-  }
-
-  /**
-   * Convert hardware address to a string representation.
-   * @param hardwareAddress
-   * @return
-   */
-  public static String toMacAddress(byte[] hardwareAddress) {
-    if (hardwareAddress == null) return "";
-    StringBuilder sb = new StringBuilder(18);
-    for (byte b : hardwareAddress) {
-      if (sb.length() > 0) { sb.append(':'); }
-      sb.append(String.format("%02x", b));
+    int broadcast = (myDhcpInfo.ipAddress & myDhcpInfo.netmask) | ~myDhcpInfo.netmask;
+    byte[] quads = new byte[4];
+    for (int k = 0; k < 4; k++)
+      quads[k] = (byte) ((broadcast >> k * 8) & 0xFF);
+    try {
+      return InetAddress.getByAddress(quads);
+    } catch (UnknownHostException e) {
+      Log.d(TAG, "Failed to get broadcast address: " + e);
+      return null;
     }
-    return sb.toString();
   }
 }

@@ -4,8 +4,8 @@
     <EditTextPreference
         android:key="@string/passCodeKey"
         android:title="Set password"
-        android:summary="Garage pass code"
-        android:dialogTitle="Password used to authorize garage requests"
+        android:summary="Password shared across all switch-servers"
+        android:dialogTitle="Password"
         android:password="true"
         android:maxLength="30"
         android:imeOptions="actionDone"
@@ -15,8 +15,8 @@
     <EditTextPreference
         android:key="@string/portNumberKey"
         android:title="Set port number"
-        android:summary="Garage port number"
-        android:dialogTitle="Garage's listening port number"
+        android:summary="Switch-server port number"
+        android:dialogTitle="Port number"
         android:maxLength="5"
         android:imeOptions="actionDone"
         android:selectAllOnFocus="true"
